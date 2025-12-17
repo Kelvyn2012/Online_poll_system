@@ -3,6 +3,11 @@ from rest_framework.response import Response
 from django.db.models import Count
 from .models import Poll, Vote
 from .serializers import PollSerializer, VoteSerializer
+from django.http import JsonResponse
+
+
+def home(request):
+    return JsonResponse({"message": "Welcome to the Poll System API"})
 
 
 class PollListView(generics.ListAPIView):
