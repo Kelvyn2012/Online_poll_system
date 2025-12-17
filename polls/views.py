@@ -8,24 +8,35 @@ class PollCreateView(generics.CreateAPIView):
     queryset = Poll.objects.all()
     serializer_class = PollSerializer
 
-class VoteCreateView(generics.CreateAPIView):
-    serializer_class = VoteSerializer
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
+class PollListView(generics.ListAPIView):
+    queryset = Poll.objects.prefetch_related('options')
+    serializer_class = PollSerializer
+  
 
-        poll = serializer.validated_data['poll']
-        voter_id = serializer.validated_data['voter_id']
+def create(self, request, *args, **kwargs):
+    serializer = self.get_serializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
 
-        if Vote.objects.filter(poll=poll, voter_id=voter_id).exists():
-            return Response(
-                {"detail": "You have already voted."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+    poll = serializer.validated_data['poll']
+    option = serializer.validated_data['option']
+    voter_id = serializer.validated_data['voter_id']
 
-        self.perform_create(serializer)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
+    if option.poll_id != poll.id:
+        return Response(
+            {"detail": "Option does not belong to this poll."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    if Vote.objects.filter(poll=poll, voter_id=voter_id).exists():
+        return Response(
+            {"detail": "You have already voted."},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    self.perform_create(serializer)
+    return Response(serializer.data, status=status.HTTP_201_CREATED)
+
 
 class PollResultView(generics.RetrieveAPIView):
     queryset = Poll.objects.all()
