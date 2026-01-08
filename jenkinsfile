@@ -21,7 +21,7 @@ pipeline {
           userRemoteConfigs: [[
             url: 'https://github.com/Kelvyn2012/Online_poll_system.git',
             
-            credentialsId: GITHUB_CREDENTIALS_ID  // Reference your GitHub credentials here
+            credentialsId: GITHUB_CREDENTIALS_ID  // Reference your GitHub credential here
           ]]
         ])
       }
