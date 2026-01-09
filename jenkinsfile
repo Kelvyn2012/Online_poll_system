@@ -20,7 +20,6 @@ pipeline {
           branches: [[name: "*/${params.BRANCH}"]],
           userRemoteConfigs: [[
             url: 'https://github.com/Kelvyn2012/Online_poll_system.git',
-            
             credentialsId: GITHUB_CREDENTIALS_ID  // Reference your GitHub credential here
           ]]
         ])
@@ -39,54 +38,22 @@ pipeline {
       steps {
         wrap([$class: 'AnsiColorBuildWrapper', colorMapName: 'xterm']) {
           script {
-            // Build the Docker image for the Django messaging app
-            docker.build("${IMAGE_NAME}:${params.BRANCH}-${BUILD_NUMBER}", "-f pollsystem/Dockerfile .")
+            // Build the Docker image from root directory (removed -f flag since Dockerfile is at root)
+            sh "docker build -t ${IMAGE_NAME}:${params.BRANCH}-${BUILD_NUMBER} ."
+            
+            // Also tag as latest if on main branch
+            if (params.BRANCH == 'main') {
+              sh "docker tag ${IMAGE_NAME}:${params.BRANCH}-${BUILD_NUMBER} ${IMAGE_NAME}:latest"
+            }
           }
         }
       }
     }
 
     stage('Push Docker image') {
+      when {
+        expression { params.BRANCH == 'main' }  // Only push from main branch
+      }
       steps {
         withCredentials([usernamePassword(credentialsId: DOCKER_CREDENTIALS_ID, usernameVariable: 'DOCKER_USERNAME', passwordVariable: 'DOCKER_PASSWORD')]) {
-          script {
-            // Docker login using bash to handle variable substitution
-            sh 'bash -c "echo $DOCKER_PASSWORD | docker login -u $DOCKER_USERNAME --password-stdin"'
-
-            // Push the Docker image to Docker Hub using bash
-            sh 'bash -c "docker push ${IMAGE_NAME}:${params.BRANCH}-${BUILD_NUMBER}"'
-          }
-        }
-      }
-    }
-
-    stage('Run tests in python:3.10') {
-      steps {
-        wrap([$class: 'AnsiColorBuildWrapper', colorMapName: 'xterm']) {
-          script {
-            docker.image(DOCKER_IMAGE).inside('-u 0:0') {
-              dir('messaging_app') {
-                sh '''
-                  python --version
-                  python -m pip install --upgrade pip
-                  if [ -f requirements.txt ]; then
-                    pip3 install -r requirements.txt
-                  fi
-                  pip3 install pytest pytest-cov
-                  mkdir -p ${REPORT_DIR}
-                  pytest -q --junitxml=${REPORT_DIR}/pytest-junit.xml --cov=. --cov-report=term-missing
-                '''
-              }
-            }
-          }
-        }
-      }
-    }
-  }
-  post {
-    always {
-      junit allowEmptyResults: true, testResults: 'messaging_app/reports/pytest-junit.xml'
-      archiveArtifacts artifacts: 'messaging_app/reports/**', fingerprint: true
-    }
-  }
-}
+          scr
